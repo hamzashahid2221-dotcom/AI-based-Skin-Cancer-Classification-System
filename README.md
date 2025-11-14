@@ -1,139 +1,133 @@
-# 🧴 AI-Assisted Skin Cancer Classification
+# 🧴 AI-Assisted Detection of Skin Cancer Using Ensemble Deep Learning
 
-This repository presents my research project on developing an **AI-assisted diagnostic model** for classifying **Skin Cancer types** using **Deep Learning**.  
-The model leverages a **fine-tuned EfficientNetB0** architecture combined with an **Adaptive Categorical Focal Loss** to handle class imbalance and improve generalization.
+This repository presents my research project on developing an **AI-assisted diagnostic model** for classifying skin cancer using **Deep Learning**.  
+The system integrates **three independently trained CNN models** — **EfficientNetB0**, **ResNet50**, and **InceptionV3** — and combines their predictions through **model ensembling** to achieve higher diagnostic reliability.
 
 ---
 
 ## 🎯 Project Overview
 
-Skin cancer is one of the most common forms of cancer globally.  
-Early and accurate detection is crucial for **effective treatment** and **improved patient outcomes**.  
-Manual examination and biopsy are **time-consuming** and often **subject to human error**, especially in regions with limited dermatological expertise.
+Skin cancer diagnosis through dermoscopic images is challenging due to:
+- subtle inter-class variations,
+- high intra-class variability,
+- and limited expert availability in low-resource clinical environments.
 
-To address this, I developed a **computer-aided diagnostic (CAD)** system capable of automatically classifying skin lesion images into:
+To tackle this challenge, I developed a **robust ensemble-based skin cancer classification system** capable of identifying:
 
-- **Basal Cell Carcinoma**  
-- **Melanoma**  
-- **Squamous Cell Carcinoma**
+- **Basal Cell Carcinoma (BCC)**
+- **Melanoma**
+- **Squamous Cell Carcinoma (SCC)**
 
-This work contributes to the intersection of **AI and dermatology**, enabling faster and more reliable skin cancer diagnostics.
+By training **three separate deep neural networks** and averaging their prediction logits, the system reduces model bias, improves generalization, and enhances clinical reliability.
+
+This work lies in the domain of **Medical Image Analysis (MIA)** and **AI-assisted dermatology**.
 
 ---
 
 ## 🧩 Dataset
 
-The project uses the **ISIC dataset**, a publicly available skin lesion dataset curated for skin cancer classification.
+The dataset consists of three clinically significant skin cancer classes:
 
-**Dataset Description:**
+| Class | Description |
+|-------|-------------|
+| Basal Cell Carcinoma | Common but low-risk skin cancer |
+| Melanoma | Highly aggressive and life-threatening |
+| Squamous Cell Carcinoma | Fast-growing, may metastasize |
 
-| Source | Description | Classes |
-|--------|-------------|--------|
-| [ISIC Skin Cancer Dataset](https://www.isic-archive.com/) | Dermoscopic images of skin lesions | Basal Cell Carcinoma, Melanoma, Squamous Cell Carcinoma |
+**Dataset Split:**
+- 80% Training  
+- 20% Testing (used for ensemble evaluation)
 
-**Data Split:**
-- 70% Training  
-- 30% Validation  
-
-**Classes:**
-- Basal Cell Carcinoma  
-- Melanoma  
-- Squamous Cell Carcinoma  
-
-**Evaluation Metrics:**
-
-| Class | Precision | Recall | F1-Score | Support |
-|-------|-----------|--------|----------|--------|
-| Basal Cell Carcinoma | 0.89 | 0.91 | 0.90 | 75 |
-| Melanoma | 0.97 | 0.99 | 0.98 | 88 |
-| Squamous Cell Carcinoma | 0.88 | 0.81 | 0.84 | 36 |
-| **Overall Accuracy** | **0.92** | **0.92** | **0.92** | 199 |
-| **Macro Avg** | 0.91 | 0.90 | 0.91 | 199 |
-| **Weighted Avg** | 0.92 | 0.92 | 0.92 | 199 |
+Images were preprocessed according to each model’s input shape:
+- **224×224** for EfficientNetB0  
+- **224×224** for ResNet50  
+- **299×299** for InceptionV3  
 
 ---
 
 ## 🧠 Model Architecture
 
-**Base Model:** EfficientNetB0 (pretrained on ImageNet)
+Three deep learning architectures were trained **independently**:
 
-- The base model is **initially frozen** to leverage pretrained features.  
-- The **last 20 layers are later unfrozen** for **fine-tuning**, enabling learning of dermatological image patterns.  
-- Input images are preprocessed and resized to match EfficientNetB0 requirements.
+### **1️⃣ EfficientNetB0**
+- Lightweight and efficient  
+- Pretrained on ImageNet  
+- Excellent feature extraction for medical images  
+
+### **2️⃣ ResNet50**
+- Residual learning improves gradient flow  
+- Strong baseline for image classification tasks  
+
+### **3️⃣ InceptionV3**
+- Factorized convolutions  
+- Handles multi-scale features effectively  
+
+Each model was fine-tuned on the skin dataset individually.
 
 ---
 
-## ⚙️ Adaptive Categorical Focal Loss
+## 🤝 Model Ensembling
 
-To handle **class imbalance**, particularly due to fewer squamous cell carcinoma samples, the model uses **adaptive categorical focal loss**:
+To boost diagnostic stability, the predictions from all three models were combined:
 
 \[
-FL(p_t) = - \alpha_t (1 - p_t)^{\gamma_t} \log(p_t)
+P_{\text{final}} = \frac{P_{\text{EfficientNet}} + P_{\text{ResNet}} + P_{\text{Inception}}}{3}
 \]
 
-Where:  
-- \( p_t \): Predicted probability of the true class  
-- \( \alpha_t \): Adaptive class weight (updates per epoch)  
-- \( \gamma_t \): Focusing parameter emphasizing hard-to-classify examples  
+This **soft voting ensemble** reduces overfitting, increases robustness, and leverages strengths of each architecture.
 
-This ensures balanced performance across all classes.
-Key Innovations:
-1. **Dynamic per-class adaptation:**  
-   - Unlike standard focal loss, the **class weight** (\(\alpha_t\)) and **focusing parameter** (\(\gamma_t\)) are **adjusted during training** based on class-wise performance metrics (e.g., recall).  
-   - This allows the model to focus more on harder-to-classify or underrepresented classes.
-
-2. **Self-adjusting loss mechanism:**  
-   - The adaptive loss forms a **feedback loop**, where model performance informs how the loss function emphasizes each class.  
-   - This reduces manual hyperparameter tuning and promotes balanced learning.
-
-3. **Stable updates:**  
-   - Adjustments are applied carefully to prevent abrupt changes, ensuring **robust and stable training**.
-
-> **Note:** The full implementation details of this adaptive loss function are part of ongoing research and are available upon request or will be published in a forthcoming manuscript.
 ---
 
 ## 🚀 Training Strategy
 
-- **Optimizer:** Adam (LR = 0.001 → adaptive reduction)  
-- **Batch Size:** 32  
-- **EarlyStopping:** Patience = 4 (restore best weights)  
-- **ModelCheckpoint:** Saves best model on validation loss  
-- **Fine-Tuning Phase:** Unfreeze last 20 EfficientNetB0 layers  
+- **Independent training** of all three models  
+- **ImageNet-pretrained weights**  
+- **Fine-tuning** for medical feature extraction  
+- **Batching + Prefetching** using TensorFlow Datasets  
+- **Evaluation** performed on combined ensemble predictions  
 
 ---
 
-## 📊 Results
+## 📊 Results (Ensemble Model)
 
-The model achieves high performance for skin cancer classification:
+The ensemble model achieved highly reliable performance:
 
-- **Macro Avg F1:** 0.91  
-- **Weighted Avg F1:** 0.92  
-- **Validation Accuracy:** 92%  
+| Class | Precision | Recall | F1-Score | Support |
+|-------|-----------|--------|----------|---------|
+| Basal Cell Carcinoma | 0.96 | 0.93 | 0.95 | 75 |
+| Melanoma | 0.97 | 1.00 | 0.98 | 88 |
+| Squamous Cell Carcinoma | 0.86 | 0.83 | 0.85 | 36 |
+| **Overall Accuracy** | **0.94** | — | — | **199** |
 
-The system demonstrates **robust performance** despite class imbalance and limited dataset size.
+### **Performance Summary**
+- **Accuracy:** 94%  
+- **Macro F1:** 0.92  
+- **Weighted F1:** 0.94  
+
+The model demonstrates **high precision** in melanoma detection and robust performance across all classes.
 
 ---
 
 ## 🔬 Interpretability
 
-Post-hoc interpretability can be added using:
+The model supports post-hoc explainability such as:
+- **Grad-CAM**  
+- **Grad-CAM++**  
+- **Integrated Gradients**
 
-- **Grad-CAM / Grad-CAM++** to visualize discriminative regions in dermoscopic images  
-- **Integrated Gradients** for pixel-level contribution analysis  
-
-These methods enhance **clinical trust** and **explainability** of the AI model.
+These methods can highlight the lesion regions that contribute to the final prediction.
 
 ---
 
 ## 🧰 Tech Stack
 
 | Tool | Purpose |
-|------|---------|
-| TensorFlow / Keras | Deep Learning Framework |
-| NumPy, Pandas | Data Handling |
+|------|----------|
+| TensorFlow / Keras | Deep Learning Models |
+| NumPy, Pandas | Data Processing |
 | Matplotlib, Seaborn | Visualization |
-| scikit-learn | Evaluation Metrics |
-| ISIC Dataset | Dermoscopic Images for Skin Cancer |
+| scikit-learn | Evaluation & Metrics |
+| Google Colab | Training & Experimentation |
 
 ---
 
@@ -143,8 +137,13 @@ These methods enhance **clinical trust** and **explainability** of the AI model.
 
 ## 🎓 Research Significance
 
-This project demonstrates how **transfer learning with adaptive focal loss** can effectively classify **skin cancer types**.  
-The model provides a **scalable diagnostic tool**, aiding dermatologists in early detection and improving patient outcomes.
+This study highlights how **model ensembling** significantly improves performance in medical imaging tasks.  
+It demonstrates the importance of:
+- multi-architecture feature extraction,
+- reducing false positives/negatives,
+- and enhancing clinical decision support systems.
+
+The approach aligns strongly with global trends in **AI for Dermatology** and **Medical Image Analysis**.
 
 ---
 
@@ -155,19 +154,20 @@ Bachelor of Biomedical Engineering (with Distinction)
 University of Engineering & Technology (UET), Lahore  
 
 🔍 Research Interests:  
-AI in Healthcare • Medical Image Analysis • Deep Learning for Diagnostics  
+AI in Healthcare • Skin Cancer Detection • Ensemble Learning • Medical Imaging
 
 ---
 
 ## 📜 License
 
-This repository is released under the **MIT License** — freely available for academic and research purposes.
+Released under the **MIT License** — free to use for research and academic purposes.
 
 ---
 
 ## 🌍 Acknowledgment
 
-Special thanks to the **ISIC dataset contributors** and the open-source AI community for enabling reproducible skin cancer research.
+Special thanks to ISIC for datasets and the research community for enabling reproducible AI research.
 
 
+(To be updated depending on your folder organization)
 
